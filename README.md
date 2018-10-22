@@ -8,7 +8,7 @@ Reparameterize your PyTorch modules
 
 ## Example
 
-```
+```py
 import torch
 import torchvision
 from torchreparam import ReparamModule
