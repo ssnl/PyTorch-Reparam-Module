@@ -34,6 +34,7 @@ class ReparamModule(nn.Module):
         # flatten
         flat_param = nn.Parameter(torch.cat([p.reshape(-1) for p in params], 0))
         self.register_parameter('flat_param', flat_param)
+        self.param_numel = flat_param.numel()
         del params
 
         # deregister the names as parameters
@@ -57,6 +58,7 @@ class ReparamModule(nn.Module):
         self.buffers = tuple(buffers)
 
         self.input_nargs = None
+        self.is_traced = False
 
         # trace if needed
         if example_input is not None:
@@ -88,6 +90,8 @@ class ReparamModule(nn.Module):
                 return traced_full_reparam_forward(flat_param, self.buffers, *inputs)
 
             self._forward_with_param = types.MethodType(traced_partial_reparam_forward, self)
+
+            self.is_traced = True
 
             del example_input
 
