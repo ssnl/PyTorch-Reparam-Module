@@ -144,5 +144,3 @@ class ReparamModule(nn.Module):
             return self._forward_with_param(flat_param, *inputs)
         else:
             return self._forward_with_param_and_buffers(flat_param, tuple(buffers), *inputs)
-
-
