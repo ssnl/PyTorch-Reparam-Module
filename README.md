@@ -3,7 +3,7 @@ Reparameterize your PyTorch modules
 
 ## Requirements
 
-+ [PyTorch](https://pytorch.org) with version at least `1.0.0` preview.
++ [PyTorch](https://pytorch.org) with version at least `1.0.1`
 + Python 3
 
 ## Example

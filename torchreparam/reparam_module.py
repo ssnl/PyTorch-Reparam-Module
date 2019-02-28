@@ -65,10 +65,12 @@ class ReparamModule(nn.Module):
             self.input_nargs = len(example_input)
 
             example_input = (
-                torch.empty_like(self.flat_param),
-                tuple(torch.empty_like(b) for b in self.buffers),
+                self.flat_param.detach().clone(),
+                tuple(b.detach().clone() for b in self.buffers),
             ) + tuple(example_input)
 
+            # BN running stats escape this check, so be careful.
+            # See https://github.com/pytorch/pytorch/issues/13402.
             def get_versions():
                 return (example_input[0]._version,) + \
                     tuple(b._version for b in example_input[1]) + \

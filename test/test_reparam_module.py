@@ -1,6 +1,7 @@
 import torch
 import torchreparam
 import unittest
+import copy
 
 torch.set_default_dtype(torch.double)
 
@@ -9,18 +10,18 @@ class TestMixin(object):
     def assertTensorEqual(a, b):
         return bool((a.detach() == b.detach()).all().item())
 
-    def _test(self, cls, args, input_shapes):
+    def _test(self, module, input_shapes):
         def get_random_input():
             return tuple(torch.randn(s) for s in input_shapes)
 
         inp1 = get_random_input()
 
-        ref_m = cls(*args)
-        reparam_m = cls(*args)
-        reparam_m.load_state_dict(ref_m.state_dict())
+        ref_m = module
+        ref_out = ref_m(*inp1).detach()
+
+        reparam_m = copy.deepcopy(module)
         reparam_m = torchreparam.ReparamModule(reparam_m, inp1 if self.traced else None)
 
-        ref_out = ref_m(*inp1).detach()
         self.assertTensorEqual(ref_out, reparam_m(*inp1))
 
         def sgd(flat_p1, inp1, inp2):
@@ -45,7 +46,25 @@ class TestMixin(object):
         torch.autograd.gradgradcheck(sgd, sgd_inp)
 
     def test_conv(self):
-        self._test(torch.nn.Conv2d, (3, 3, 3), ((1, 3, 3, 4),))
+        self._test(torch.nn.Conv2d(3, 3, 3), ((1, 3, 3, 4),))
+
+    def test_simple_network(self):
+        class MyNet(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.feature = torch.nn.Sequential(
+                    torch.nn.Linear(10, 15),
+                    torch.nn.LeakyReLU(0.2),
+                    # torch.nn.BatchNorm1d(15),
+                    torch.nn.Linear(15, 10),
+                )
+                self.register_buffer('target', torch.tensor(2))
+
+            def forward(self, x):
+                out = self.feature(x)
+                return torch.nn.functional.cross_entropy(out, self.target.expand(out.size(0)))
+
+        self._test(MyNet(), ((2, 10),))
 
 
 class TestTraced(unittest.TestCase, TestMixin):
