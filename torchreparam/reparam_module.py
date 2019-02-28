@@ -105,9 +105,15 @@ class ReparamModule(nn.Module):
 
     @contextmanager
     def unflattened_param(self, flat_param):
+        saved_views = [getattr(m, n) for m, n in self.param_infos]
         self._unflatten_param(flat_param)
         yield
-        self._unflatten_param(self.flat_param)
+        # Why not just `self._unflatten_param(self.flat_param)`?
+        # 1. because of https://github.com/pytorch/pytorch/issues/17583
+        # 2. slightly faster since it does not require reconstruc the split+view
+        #    graph
+        for (m, n), p in zip(self.param_infos, saved_views):
+            setattr(m, n, p)
 
     @contextmanager
     def replaced_buffers(self, buffers):
