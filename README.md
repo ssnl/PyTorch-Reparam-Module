@@ -32,3 +32,9 @@ input = torch.randn(1, 3, 224, 224, device=dev)
 l = maml_loss(trained_param, input, loss_fn=torch.norm)
 torch.autograd.grad(l, trained_param)
 ```
+
+## Installation
+
+```sh
+python setup.py install
+```
