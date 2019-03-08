@@ -103,5 +103,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# gdb
+.gdb_history
+
 # sftp
 sftp-config.json
