@@ -112,7 +112,7 @@ class ReparamModule(nn.Module):
         yield
         # Why not just `self._unflatten_param(self.flat_param)`?
         # 1. because of https://github.com/pytorch/pytorch/issues/17583
-        # 2. slightly faster since it does not require reconstruc the split+view
+        # 2. slightly faster since it does not require reconstruct the split+view
         #    graph
         for (m, n), p in zip(self.param_infos, saved_views):
             setattr(m, n, p)
