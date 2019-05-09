@@ -13,11 +13,11 @@ import torch
 import torchvision
 from torchreparam import ReparamModule
 
-dev = torch.device('cuda')
+device = torch.device('cuda')
 
 reparam_vgg11 = ReparamModule(
-    torchvision.models.vgg11().to(dev),
-    example_input=(torch.randn(1, 3, 224, 224, device=dev),)
+    torchvision.models.vgg11().to(device),
+    example_input=(torch.randn(1, 3, 224, 224, device=device),)
 )
 
 def maml_loss(param, input, loss_fn, lr=0.01):
@@ -59,4 +59,6 @@ where
 + `flat_param` will be used as the parameter of this forward pass, if specified. Note that this allows you easily activate a network on an entirely different set of parameters, and backprop to them.
 + `buffers` will be used as the buffers for this forward pass, if specified (experimental).
 
-Note: currently not working with Batch Normalization layers.
+Note
++ `ReparamModule` currently does not work properly with Batch Normalization layers.
++ The inner module must be moved to desired device and/or dtype, before being wrapped in `ReparamModule`.
