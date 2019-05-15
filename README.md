@@ -28,7 +28,7 @@ def maml_loss(param, input, loss_fn, lr=0.01):
 
 
 trained_param = torch.randn_like(reparam_vgg11.flat_param).mul_(0.001).requires_grad_()
-input = torch.randn(1, 3, 224, 224, device=dev)
+input = torch.randn(1, 3, 224, 224, device=device)
 l = maml_loss(trained_param, input, loss_fn=torch.norm)
 l.backward()
 
