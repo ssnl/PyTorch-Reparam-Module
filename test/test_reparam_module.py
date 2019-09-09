@@ -59,11 +59,11 @@ class TestMixin(object):
                     # torch.nn.BatchNorm1d(15),
                     torch.nn.Linear(15, 10),
                 )
-                self.register_buffer('target', torch.tensor(2))
+                self.register_buffer('target', torch.tensor(2.))
 
             def forward(self, x):
                 out = self.feature(x)
-                return torch.nn.functional.cross_entropy(out, self.target.expand(out.size(0)))
+                return out * self.target
 
         self._test(MyNet(), ((2, 10),))
 

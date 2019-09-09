@@ -57,44 +57,22 @@ class ReparamModule(nn.Module):
         self.buffer_infos = tuple(buffer_infos)
         self.buffers = tuple(buffers)
 
-        self.input_nargs = None
-        self.is_traced = False
-
         # trace if needed
         if example_input is not None:
-            self.input_nargs = len(example_input)
+            example_input = tuple(example_input)
+            example_param = (self.flat_param.detach().clone(),)
+            example_buffers = (tuple(b.detach().clone() for b in self.buffers),)
 
-            example_input = (
-                self.flat_param.detach().clone(),
-                tuple(b.detach().clone() for b in self.buffers),
-            ) + tuple(example_input)
+            traced_module = torch.jit.trace_module(
+                self,
+                inputs=dict(
+                    _forward_with_param=example_param + example_input,
+                    _forward_with_param_and_buffers=example_param + example_buffers + example_input,
+                ),
+            )
 
-            # BN running stats escape this check, so be careful.
-            # See https://github.com/pytorch/pytorch/issues/13402.
-            def get_versions():
-                return (example_input[0]._version,) + \
-                    tuple(b._version for b in example_input[1]) + \
-                    tuple(x._version for x in example_input[2])
-
-            pre_version = get_versions()
-            self._forward_with_param_and_buffers(*example_input)
-            post_version = get_versions()
-
-            if any(x != y for x, y in zip(pre_version, post_version)):
-                warnings.warn("module changes input/parameter/buffer in-place. Skip tracing!")
-                return
-
-            traced_full_reparam_forward = torch.jit.trace(self._forward_with_param_and_buffers, example_input)
-
-            self._forward_with_param_and_buffers = traced_full_reparam_forward
-
-            def traced_partial_reparam_forward(self, flat_param, *inputs):
-                return traced_full_reparam_forward(flat_param, self.buffers, *inputs)
-
-            self._forward_with_param = types.MethodType(traced_partial_reparam_forward, self)
-
-            self.is_traced = True
-
+            self._forward_with_param = traced_module._forward_with_param
+            self._forward_with_param_and_buffers = traced_module._forward_with_param_and_buffers
             del example_input
 
     def _apply(self, *args, **kwargs):
@@ -135,9 +113,6 @@ class ReparamModule(nn.Module):
             return self.module(*inputs)
 
     def forward(self, *inputs, flat_param=None, buffers=None):
-        if self.input_nargs is not None and len(inputs) != self.input_nargs:
-            raise RuntimeError(
-                "Expects {} input arguments, but got {}".format(self.input_nargs, len(inputs)))
         if flat_param is None:
             flat_param = self.flat_param
         if buffers is None:
