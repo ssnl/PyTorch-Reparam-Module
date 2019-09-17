@@ -75,6 +75,10 @@ class ReparamModule(nn.Module):
             self._forward_with_param_and_buffers = traced_module._forward_with_param_and_buffers
             del example_input
 
+    def clear_views(self):
+        for m, n in self.param_infos:
+            setattr(m, n, None)  # This will set as plain attr
+
     def _apply(self, *args, **kwargs):
         raise RuntimeError("Cannot change parameters and/or buffers after being wrapped by ReparamModule")
 
