@@ -107,19 +107,19 @@ class ReparamModule(nn.Module):
         for (m, n), old_b in zip(self.buffer_infos, self.buffers):
             setattr(m, n, old_b)
 
-    def _forward_with_param_and_buffers(self, flat_param, buffers, *inputs):
+    def _forward_with_param_and_buffers(self, flat_param, buffers, *inputs, **kwinputs):
         with self.unflattened_param(flat_param):
             with self.replaced_buffers(buffers):
-                return self.module(*inputs)
+                return self.module(*inputs, **kwinputs)
 
-    def _forward_with_param(self, flat_param, *inputs):
+    def _forward_with_param(self, flat_param, *inputs, **kwinputs):
         with self.unflattened_param(flat_param):
-            return self.module(*inputs)
+            return self.module(*inputs, **kwinputs)
 
-    def forward(self, *inputs, flat_param=None, buffers=None):
+    def forward(self, *inputs, flat_param=None, buffers=None, **kwinputs):
         if flat_param is None:
             flat_param = self.flat_param
         if buffers is None:
-            return self._forward_with_param(flat_param, *inputs)
+            return self._forward_with_param(flat_param, *inputs, **kwinputs)
         else:
-            return self._forward_with_param_and_buffers(flat_param, tuple(buffers), *inputs)
+            return self._forward_with_param_and_buffers(flat_param, tuple(buffers), *inputs, **kwinputs)
