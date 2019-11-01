@@ -21,17 +21,19 @@ class TestMixin(object):
         ref_out = ref_m(*inp1).detach()
 
         reparam_m = copy.deepcopy(module)
-        reparam_m = torchreparam.ReparamModule(reparam_m, inp1 if self.traced else None)
+        reparam_m = torchreparam.ReparamModule(reparam_m)
+        if self.traced:
+            reparam_m = reparam_m.trace(inp1)
 
         self.assertTensorEqual(ref_out, reparam_m(*inp1))
 
         def sgd(flat_p1, inp1, inp2):
             out1 = reparam_m(*inp1, flat_param=flat_p1,
-                             buffers=tuple(b.clone().detach() for b in reparam_m.buffers))
+                             buffers=tuple(b.clone().detach() for _, _, b in reparam_m._buffer_infos))
             l1 = (out1 * ref_out).mean()
             flat_p2 = flat_p1 - torch.autograd.grad(l1, flat_p1, create_graph=True)[0] * 0.02
             out2 = reparam_m(*inp2, flat_param=flat_p2,
-                             buffers=tuple(b.clone().detach() for b in reparam_m.buffers))
+                             buffers=tuple(b.clone().detach() for _, _, b in reparam_m._buffer_infos))
             return out2
 
         # assert that fully reparamed forward doesn't change parameter
@@ -72,7 +74,7 @@ class TestTraced(unittest.TestCase, TestMixin):
     traced = True
 
 
-class TestUntraced(unittest.TestCase, TestMixin):
+class TestNotTraced(unittest.TestCase, TestMixin):
     traced = False
 
 if __name__ == '__main__':
