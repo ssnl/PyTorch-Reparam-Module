@@ -18,7 +18,7 @@ setup(
     url='https://github.com/SsnL/PyTorch-Reparam-Module',
     description='Reparameterize your PyTorch modules',
     long_description=readme,
-    license='BSD',
+    license='MIT',
 
     # Package info
     packages=find_packages(exclude=('test',)),
