@@ -107,4 +107,4 @@ where
 + `buffers` will be used as the buffers for this forward pass, if specified (experimental).
 
 Note
-+ `ReparamModule` currently does not work properly with Batch Normalization layers.
++ `ReparamModule` currently does not work properly with Batch Normalization layers with the default `track_running_stats=True`.
