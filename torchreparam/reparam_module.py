@@ -12,22 +12,30 @@ class ReparamModule(nn.Module):
         self.module = module
 
         param_infos = []
+        shared_param_memo = {}
+        shared_param_infos = []
         params = []
         param_numels = []
         param_shapes = []
         for m in self.modules():
             for n, p in m.named_parameters(recurse=False):
                 if p is not None:
-                    param_infos.append((m, n))
-                    params.append(p.detach())
-                    param_numels.append(p.numel())
-                    param_shapes.append(p.size())
+                    if p in shared_param_memo:
+                        shared_m, shared_n = shared_param_memo[p]
+                        shared_param_infos.append((m, n, shared_m, shared_n))
+                    else:
+                        shared_param_memo[p] = (m, n)
+                        param_infos.append((m, n))
+                        params.append(p.detach())
+                        param_numels.append(p.numel())
+                        param_shapes.append(p.size())
 
         assert len(set(p.dtype for p in params)) <= 1, \
             "expects all parameters in module to have same dtype"
 
         # store the info for unflatten
         self._param_infos = tuple(param_infos)
+        self._shared_param_infos = tuple(shared_param_infos)
         self._param_numels = tuple(param_numels)
         self._param_shapes = tuple(param_shapes)
 
@@ -36,9 +44,12 @@ class ReparamModule(nn.Module):
         self.register_parameter('flat_param', flat_param)
         self.param_numel = flat_param.numel()
         del params
+        del shared_param_memo
 
         # deregister the names as parameters
         for m, n in self._param_infos:
+            delattr(m, n)
+        for m, n, _, _ in self._shared_param_infos:
             delattr(m, n)
 
         # register the views as plain attributes
@@ -92,6 +103,8 @@ class ReparamModule(nn.Module):
         ps = (t.view(s) for (t, s) in zip(flat_param.split(self._param_numels), self._param_shapes))
         for (m, n), p in zip(self._param_infos, ps):
             setattr(m, n, p)  # This will set as plain attr
+        for (m, n, shared_m, shared_n) in self._shared_param_infos:
+            setattr(m, n, getattr(shared_m, shared_n))
 
     @contextmanager
     def unflattened_param(self, flat_param):
@@ -104,6 +117,8 @@ class ReparamModule(nn.Module):
         #    graph
         for (m, n), p in zip(self._param_infos, saved_views):
             setattr(m, n, p)
+        for (m, n, shared_m, shared_n) in self._shared_param_infos:
+            setattr(m, n, getattr(shared_m, shared_n))
 
     @contextmanager
     def replaced_buffers(self, buffers):
