@@ -69,6 +69,41 @@ class TestMixin(object):
 
         self._test(MyNet(), ((2, 10),))
 
+    def test_shared_params(self):
+
+        def get_net_and_input():
+            torch.manual_seed(0)  # deterministic
+            net = torch.nn.Sequential(
+                torch.nn.Linear(10, 15, bias=False),
+                torch.nn.Linear(15, 10, bias=False),
+                torch.nn.Linear(10, 15, bias=False),
+            )
+            # first and last layer share weights
+            net[-1].weight = net[0].weight
+            input = torch.rand(2, 10)
+            return net, input
+
+        def get_param_norm_after_step(reparam):
+            net, input = get_net_and_input()
+            if reparam:
+                net = torchreparam.ReparamModule(net)
+                if self.traced:
+                    net = net.trace(input)
+            optim = torch.optim.SGD(net.parameters(), lr=1.0)
+            loss = net(input).sum()
+            loss.backward()
+            optim.step()
+            if reparam:
+                # the first 300 params cover layers 1 and 2
+                return net.flat_param[:300].norm()
+            else:
+                return torch.norm(torch.stack([p.norm() for p in net.parameters()]))
+
+        ref_pnorm = get_param_norm_after_step(reparam=False)
+        reparam_pnorm = get_param_norm_after_step(reparam=True)
+
+        torch.testing.assert_allclose(ref_pnorm, reparam_pnorm)
+
 
 class TestTraced(unittest.TestCase, TestMixin):
     traced = True
